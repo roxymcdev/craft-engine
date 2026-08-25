@@ -52,6 +52,8 @@ public final class FenceBlockBehavior extends BukkitBlockBehavior implements Pat
     public final Property<Boolean> westProperty;
     public final Object connectableBlockTag;
     public final boolean canLeash;
+    public final boolean connectToSolidBlocks;
+    public final boolean connectToFenceGates;
 
     private FenceBlockBehavior(BlockDefinition blockDefinition,
                                Property<Boolean> northProperty,
@@ -59,7 +61,9 @@ public final class FenceBlockBehavior extends BukkitBlockBehavior implements Pat
                                Property<Boolean> southProperty,
                                Property<Boolean> westProperty,
                                Object connectableBlockTag,
-                               boolean canLeash) {
+                               boolean canLeash,
+                               boolean connectToSolidBlocks,
+                               boolean connectToFenceGates) {
         super(blockDefinition);
         this.northProperty = northProperty;
         this.eastProperty = eastProperty;
@@ -67,6 +71,8 @@ public final class FenceBlockBehavior extends BukkitBlockBehavior implements Pat
         this.westProperty = westProperty;
         this.connectableBlockTag = connectableBlockTag;
         this.canLeash = canLeash;
+        this.connectToSolidBlocks = connectToSolidBlocks;
+        this.connectToFenceGates = connectToFenceGates;
     }
 
     @Override
@@ -76,10 +82,10 @@ public final class FenceBlockBehavior extends BukkitBlockBehavior implements Pat
 
     public boolean connectsTo(BlockStateWrapper state, boolean isSideSolid, Direction direction) {
         boolean isSameFence = this.isSameFence(state);
-        boolean flag = FenceGateBlockProxy.CLASS.isInstance(BlockStateUtils.getBlockOwner(state.minecraftState()))
+        boolean flag = this.connectToFenceGates && FenceGateBlockProxy.CLASS.isInstance(BlockStateUtils.getBlockOwner(state.minecraftState()))
                 ? FenceGateBlockProxy.INSTANCE.connectsToDirection(state.minecraftState(), DirectionUtils.toNMSDirection(direction))
                 : FenceGateBlockBehavior.connectsToDirection(state, direction);
-        return !isExceptionForConnection(state) && isSideSolid || isSameFence || flag;
+        return this.connectToSolidBlocks && isSideSolid && !isExceptionForConnection(state)|| isSameFence || flag;
     }
 
     public static boolean isExceptionForConnection(BlockStateWrapper state) {
@@ -95,8 +101,11 @@ public final class FenceBlockBehavior extends BukkitBlockBehavior implements Pat
 
     private boolean isSameFence(BlockStateWrapper state) {
         Object blockState = state.minecraftState();
-        return BlockBehaviourProxy.BlockStateBaseProxy.INSTANCE.is$1(blockState, BlockTagsProxy.FENCES)
-                && BlockBehaviourProxy.BlockStateBaseProxy.INSTANCE.is$1(blockState, this.connectableBlockTag)
+        boolean isFence = BlockBehaviourProxy.BlockStateBaseProxy.INSTANCE.is$1(blockState, BlockTagsProxy.FENCES)
+                || BlockStateUtils.getOptionalCustomBlockState(blockState)
+                .map(customState -> customState.behavior().getFirst(FenceBlockBehavior.class))
+                .isPresent();
+        return isFence && BlockBehaviourProxy.BlockStateBaseProxy.INSTANCE.is$1(blockState, this.connectableBlockTag)
                 == BlockBehaviourProxy.BlockStateBaseProxy.INSTANCE.is$1(this.blockDefinition.defaultState().customBlockState().minecraftState(), this.connectableBlockTag);
     }
 
@@ -168,6 +177,8 @@ public final class FenceBlockBehavior extends BukkitBlockBehavior implements Pat
     private static class Factory implements BlockBehaviorFactory<FenceBlockBehavior> {
         private static final String[] CAN_LEASH = ConfigKeys.of("can_leash");
         private static final String[] CONNECTABLE_BLOCK_TAG = ConfigKeys.of("connectable_block_tag");
+        private static final String[] CONNECT_TO_SOLID_BLOCKS = ConfigKeys.of("connect_to_solid_blocks");
+        private static final String[] CONNECT_TO_FENCE_GATES = ConfigKeys.of("connect_to_fence_gates");
 
         @Override
         public FenceBlockBehavior create(BlockDefinition block, ConfigSection section) {
@@ -178,7 +189,9 @@ public final class FenceBlockBehavior extends BukkitBlockBehavior implements Pat
                     BlockBehaviorFactory.getProperty(section.path(), block, "south", Boolean.class),
                     BlockBehaviorFactory.getProperty(section.path(), block, "west", Boolean.class),
                     BlockTags.getOrCreate(section.getIdentifier(CONNECTABLE_BLOCK_TAG, DEFAULT_CONNECTABLE)),
-                    section.getBoolean(CAN_LEASH)
+                    section.getBoolean(CAN_LEASH),
+                    section.getBoolean(CONNECT_TO_SOLID_BLOCKS, true),
+                    section.getBoolean(CONNECT_TO_FENCE_GATES, true)
             );
         }
     }
