@@ -30,7 +30,7 @@ public final class GroundBlockItemBehavior extends BlockItemBehavior {
 
     @Override
     public InteractionResult place(BlockPlaceContext context) {
-        if (context.getClickedFace() != Direction.UP) {
+        if (context.getClickedFace() != Direction.UP && context.getLevel().getBlockState(context.getClickedPos().below()).replaceable()) {
             return InteractionResult.PASS;
         }
         return super.place(context);
