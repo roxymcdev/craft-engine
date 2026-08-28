@@ -189,11 +189,12 @@ public final class BlockStateParser {
     @Nullable
     public static ImmutableBlockState deserialize(@NotNull String data) {
         StringReader reader = StringReader.simple(data);
-        String blockIdString = reader.readUnquotedString();
-        if (reader.canRead() && reader.peek() == ':') {
+        // see vanilla: BlockStateParser#readBlock, Identifier#read
+        int start = reader.getCursor();
+        while (reader.canRead() && (reader.peek() == ':' || net.kyori.adventure.key.Key.allowedInValue(reader.peek()))) {
             reader.skip();
-            blockIdString = blockIdString + ":" + reader.readUnquotedString();
         }
+        String blockIdString = reader.substring(start, reader.getCursor());
         Optional<Holder.Reference<BlockDefinition>> optional = BuiltInRegistries.BLOCK.get(Key.from(blockIdString));
         if (optional.isEmpty()) {
             return null;
