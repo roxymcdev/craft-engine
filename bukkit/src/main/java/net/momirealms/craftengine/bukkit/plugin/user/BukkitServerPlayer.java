@@ -926,14 +926,6 @@ public class BukkitServerPlayer extends BukkitLivingEntity implements Player {
     }
 
     public void startMiningBlock(BlockPos pos, @NotNull Object state, @Nullable ImmutableBlockState customState) {
-        if (isAdventureMode() && !canBreak(pos, state)) {
-            this.destroyPos = null;
-            this.destroyedState = null;
-            this.isDestroyingBlock = false;
-            this.isDestroyingCustomBlock = false;
-            return;
-        }
-
         boolean custom = customState != null;
         boolean canInstantBreak = this.getDestroyProgress(state, pos) >= 1f;
 
