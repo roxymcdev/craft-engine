@@ -9,6 +9,7 @@ plugins {
 
 group = providers.gradleProperty("project_group").get()
 version = providers.gradleProperty("project_version").get()
+version = "$version-roxy"
 
 subprojects {
     group = rootProject.group
