@@ -13,6 +13,8 @@ import net.momirealms.craftengine.bukkit.item.BukkitItemManager;
 import net.momirealms.craftengine.bukkit.plugin.network.BukkitNetworkManager;
 import net.momirealms.craftengine.bukkit.plugin.user.BukkitServerPlayer;
 import net.momirealms.craftengine.core.item.Item;
+import net.momirealms.craftengine.core.item.network.ItemPacketSource;
+import net.momirealms.craftengine.core.plugin.text.component.ComponentProvider;
 import net.momirealms.craftengine.core.plugin.text.component.NBTDataComponentPatch;
 import net.momirealms.craftengine.core.util.AdventureHelper;
 import net.momirealms.craftengine.core.util.GsonHelper;
@@ -54,8 +56,11 @@ public final class ComponentUtils {
     }
 
     public static Object jsonElementToMinecraft(JsonElement json) {
+        return deserializeJson(json);
+    }
+
+    private static Object deserializeJson(JsonElement json) {
         if (VersionHelper.isOrAbove1_21_6) {
-            if (json == null) return null;
             return ComponentSerialization$CODEC.parse(RegistryOps.JSON, json).getOrThrow(JsonParseException::new);
         } else if (VersionHelper.isOrAbove1_20_5) {
             return ComponentProxy.SerializerProxy.INSTANCE.fromJson(json, RegistryUtils.getRegistryAccess());
@@ -86,6 +91,14 @@ public final class ComponentUtils {
         }
     }
 
+    public static JsonElement minecraftToJsonElement(Object component) {
+        if (VersionHelper.isOrAbove1_20_5) {
+            return ComponentSerialization$CODEC.encodeStart(RegistryOps.JSON, component).getOrThrow(JsonParseException::new);
+        } else {
+            return ComponentProxy.SerializerProxy.INSTANCE.toJsonTree(component);
+        }
+    }
+
     public static String paperAdventureToJson(Object component) {
         return GsonComponentSerializerProxy.GSON.toJson(component);
     }
@@ -100,6 +113,10 @@ public final class ComponentUtils {
 
     public static Object jsonElementToPaperAdventure(JsonElement json) {
         return GsonComponentSerializerProxy.GSON.fromJson(json, net.momirealms.craftengine.proxy.adventure.text.ComponentProxy.CLASS);
+    }
+
+    public static Map<String, ComponentProvider> matchNetworkTags(Object component) {
+        return BukkitNetworkManager.instance().matchNetworkTags(minecraftToJsonElement(component));
     }
 
     public static boolean hasNetworkTag(Object component) {
@@ -210,7 +227,7 @@ public final class ComponentUtils {
 
         BukkitItemManager itemManager = BukkitItemManager.instance();
         Item wrap = itemManager.wrap(ItemStackUtils.getBukkitStack(nmsItemStack));
-        Optional<Item> remapped = itemManager.s2c(wrap, player);
+        Optional<Item> remapped = itemManager.s2c(wrap, player, ItemPacketSource.MESSAGE);
         if (remapped.isEmpty()) {
             return showItem;
         }

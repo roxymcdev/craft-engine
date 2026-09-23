@@ -7,8 +7,8 @@ import net.momirealms.craftengine.bukkit.util.PacketUtils;
 import net.momirealms.craftengine.core.entity.player.Player;
 import net.momirealms.craftengine.core.entity.projectile.ProjectileDisplay;
 import net.momirealms.craftengine.core.item.Item;
+import net.momirealms.craftengine.core.item.network.ItemPacketSource;
 import net.momirealms.craftengine.core.plugin.network.EntityPacketHandler;
-import net.momirealms.craftengine.core.plugin.network.NetWorkUser;
 import net.momirealms.craftengine.core.plugin.network.event.ByteBufPacketEvent;
 import net.momirealms.craftengine.core.util.FriendlyByteBuf;
 import net.momirealms.craftengine.core.util.MiscUtils;
@@ -45,7 +45,7 @@ public final class ProjectilePacketHandler implements EntityPacketHandler {
     }
 
     @Override
-    public void handleSyncEntityPosition(NetWorkUser user, ByteBufPacketEvent event, int entityId, FriendlyByteBuf buf) {
+    public void handleSyncEntityPosition(Player user, ByteBufPacketEvent event, int entityId, FriendlyByteBuf buf) {
         Vec3d position = buf.readVec3();
         Vec3d deltaMovement = buf.readVec3();
         float yRot = buf.readFloat();
@@ -63,7 +63,7 @@ public final class ProjectilePacketHandler implements EntityPacketHandler {
     }
 
     @Override
-    public void handleMoveAndRotate(NetWorkUser user, ByteBufPacketEvent event, int entityId, FriendlyByteBuf buf) {
+    public void handleMoveAndRotate(Player user, ByteBufPacketEvent event, int entityId, FriendlyByteBuf buf) {
         short xa = buf.readShort();
         short ya = buf.readShort();
         short za = buf.readShort();
@@ -82,7 +82,7 @@ public final class ProjectilePacketHandler implements EntityPacketHandler {
         buf.writeBoolean(onGround);
     }
 
-    public void convertAddCustomProjectilePacket(FriendlyByteBuf buf, ByteBufPacketEvent event, NetWorkUser user) {
+    public void convertAddCustomProjectilePacket(FriendlyByteBuf buf, ByteBufPacketEvent event, Player user) {
         UUID uuid = buf.readUUID();
         buf.readVarInt(); // type
         double x = buf.readDouble();
@@ -122,7 +122,7 @@ public final class ProjectilePacketHandler implements EntityPacketHandler {
         List<Object> itemDisplayValues = new ArrayList<>();
         Item displayedItem = Item.byId(this.display.item(), player);
         if (displayedItem == null) return itemDisplayValues;
-        displayedItem = BukkitItemManager.instance().s2c(displayedItem, player).orElse(displayedItem);
+        displayedItem = BukkitItemManager.instance().s2c(displayedItem, player, ItemPacketSource.ENTITY_DATA).orElse(displayedItem);
 
         // 我们应当使用新的展示物品的组件覆盖原物品的组件，以完成附魔，附魔光效等组件的继承.
         Item item = this.projectile.item();

@@ -4,6 +4,7 @@ import net.kyori.adventure.text.Component;
 import net.momirealms.craftengine.core.item.Item;
 import net.momirealms.craftengine.core.item.ItemBuildContext;
 import net.momirealms.craftengine.core.item.component.DataComponentKeys;
+import net.momirealms.craftengine.core.item.network.ItemPacketSource;
 import net.momirealms.craftengine.core.item.processor.ItemProcessorFactory;
 import net.momirealms.craftengine.core.item.processor.SimpleNetworkItemProcessor;
 import net.momirealms.craftengine.core.plugin.config.ConfigConstants;
@@ -40,6 +41,23 @@ public final class InsertLoreProcessor implements SimpleNetworkItemProcessor {
             }
         }
         return stream;
+    }
+
+    @Override
+    public boolean shouldSkip(ItemPacketSource source) {
+        return source.canSkipLore;
+    }
+
+    @Override
+    public boolean isConstant() {
+        if (this.lores != null) {
+            for (LoreModification modification : this.lores) {
+                if (!modification.isConstant()) {
+                    return false;
+                }
+            }
+        }
+        return this.fallback == null || this.fallback.isConstant();
     }
 
     @Override

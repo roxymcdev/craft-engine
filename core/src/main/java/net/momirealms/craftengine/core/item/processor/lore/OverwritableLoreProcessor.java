@@ -3,6 +3,7 @@ package net.momirealms.craftengine.core.item.processor.lore;
 import net.momirealms.craftengine.core.item.Item;
 import net.momirealms.craftengine.core.item.ItemBuildContext;
 import net.momirealms.craftengine.core.item.component.DataComponentKeys;
+import net.momirealms.craftengine.core.item.network.ItemPacketSource;
 import net.momirealms.craftengine.core.item.network.NetworkItemBuildContext;
 import net.momirealms.craftengine.core.item.processor.ItemProcessorFactory;
 import net.momirealms.craftengine.core.item.processor.SimpleNetworkItemProcessor;
@@ -20,6 +21,11 @@ public final class OverwritableLoreProcessor implements SimpleNetworkItemProcess
     }
 
     @Override
+    public boolean shouldSkip(ItemPacketSource source) {
+        return source.canSkipLore;
+    }
+
+    @Override
     public void apply(ItemBuildContext context) {
         Item item = context.item();
         if (VersionHelper.COMPONENT_RELEASE) {
@@ -32,6 +38,11 @@ public final class OverwritableLoreProcessor implements SimpleNetworkItemProcess
             }
         }
         this.loreProcessor.apply(context);
+    }
+
+    @Override
+    public boolean isConstant() {
+        return this.loreProcessor.isConstant();
     }
 
     @Override

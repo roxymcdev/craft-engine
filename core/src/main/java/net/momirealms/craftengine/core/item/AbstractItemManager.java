@@ -4,9 +4,11 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonPrimitive;
 import com.mojang.datafixers.util.Either;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import net.momirealms.craftengine.core.entity.player.Player;
 import net.momirealms.craftengine.core.item.behavior.*;
 import net.momirealms.craftengine.core.item.customdata.*;
 import net.momirealms.craftengine.core.item.equipment.*;
+import net.momirealms.craftengine.core.item.network.ItemPacketSource;
 import net.momirealms.craftengine.core.item.processor.*;
 import net.momirealms.craftengine.core.item.setting.ItemSettings;
 import net.momirealms.craftengine.core.item.updater.ItemUpdateConfig;
@@ -34,6 +36,7 @@ import net.momirealms.craftengine.core.plugin.context.number.ConstantNumberProvi
 import net.momirealms.craftengine.core.util.*;
 import org.incendo.cloud.suggestion.Suggestion;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -397,7 +400,6 @@ public abstract class AbstractItemManager extends AbstractModelGenerator impleme
                 this.tempCategories.clear();
             }
             AbstractItemManager.this.vanillaItemDataOverrides.clear();
-            ObfuscatedItemModelProcessor.CAN_OBF.clear();
         }
 
         @Override
@@ -515,7 +517,6 @@ public abstract class AbstractItemManager extends AbstractModelGenerator impleme
         private static final String[] HAND_ANIMATION_ON_SWAP = ConfigKeys.of("hand_animation_on_swap");
         private static final String[] SWAP_ANIMATION_SCALE = ConfigKeys.of("swap_animation_scale");
         private static final String[] CATEGORIES = ConfigKeys.of("category|categor(y|ies)");
-        private static final String[] SKIP_OBFUSCATION = ConfigKeys.of("skip_obfuscation");
         private static final String[] OVERRIDE_DATA = ConfigKeys.of("override_data");
 
         @Override
@@ -649,12 +650,7 @@ public abstract class AbstractItemManager extends AbstractModelGenerator impleme
                 }
                 if (itemModel != null && (hasModelSection || forceItemModel)) {
                     if (clientBoundModel) {
-                        if (Config.obfuscateItemModel() && !section.getBoolean(SKIP_OBFUSCATION, false)) {
-                            itemBuilder.clientBoundProcessor(new ObfuscatedItemModelProcessor(itemModel));
-                            ObfuscatedItemModelProcessor.CAN_OBF.add(itemModel);
-                        } else {
-                            itemBuilder.clientBoundProcessor(new OverwritableItemModelProcessor(itemModel));
-                        }
+                        itemBuilder.clientBoundProcessor(new OverwritableItemModelProcessor(itemModel));
                     }
                     else itemBuilder.dataProcessor(new ItemModelProcessor(itemModel));
                 }
