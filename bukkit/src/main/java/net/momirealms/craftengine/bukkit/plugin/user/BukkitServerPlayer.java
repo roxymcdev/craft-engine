@@ -768,7 +768,7 @@ public class BukkitServerPlayer extends BukkitLivingEntity implements Player {
             }
             this.lastHitFurniture = furniture;
             if (forceShow) {
-                this.sendActionBar(furniture == null ? Component.empty() : Component.text(furniture.id().asString() + " | Colliders: " + furniture.colliders().size()));
+                this.sendActionBar(furniture == null ? Component.empty() : Component.text(furniture.id().asString() + " | Position: " + furniture.location().toVector() + " | Colliders: " + furniture.colliders().size()));
             }
             if (furniture != null && forceShow) {
                 FurnitureVariant currentVariant = furniture.currentVariant();
