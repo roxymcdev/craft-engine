@@ -1,6 +1,7 @@
 package net.momirealms.craftengine.bukkit.entity.furniture;
 
 import ca.spottedleaf.concurrentutil.map.concurrent.ints.ConcurrentChainedInt2ReferenceHashTable;
+import ca.spottedleaf.concurrentutil.map.concurrent.objects.ConcurrentChainedObject2ReferenceHashTable;
 import net.momirealms.craftengine.bukkit.api.BukkitAdaptor;
 import net.momirealms.craftengine.bukkit.api.CraftEngineFurniture;
 import net.momirealms.craftengine.bukkit.entity.furniture.hitbox.InteractionFurnitureHitboxConfig;
@@ -29,6 +30,7 @@ import net.momirealms.craftengine.core.util.Key;
 import net.momirealms.craftengine.core.util.VersionHelper;
 import net.momirealms.craftengine.core.world.CEWorld;
 import net.momirealms.craftengine.core.world.WorldPosition;
+import net.momirealms.craftengine.core.world.WorldVec3d;
 import net.momirealms.craftengine.core.world.chunk.CEChunk;
 import net.momirealms.craftengine.proxy.bukkit.craftbukkit.CraftWorldProxy;
 import net.momirealms.craftengine.proxy.bukkit.craftbukkit.entity.CraftEntityProxy;
@@ -46,8 +48,10 @@ import org.bukkit.persistence.PersistentDataType;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.BiConsumer;
 
 public final class BukkitFurnitureManager extends AbstractFurnitureManager {
@@ -66,6 +70,7 @@ public final class BukkitFurnitureManager extends AbstractFurnitureManager {
     // 先登记再添加 Collider，先撤销登记再移除 Collider，避免同步嵌套事件重复创建/卸载。
     // 并发哈希表供网络线程查询；它不意味着同一家具可跨 Folia 区域并发初始化。
     private final ConcurrentChainedInt2ReferenceHashTable<BukkitFurniture> byMetaEntityId = ConcurrentChainedInt2ReferenceHashTable.createWithCapacity(256, 0.5f);
+    private final ConcurrentChainedObject2ReferenceHashTable<WorldVec3d, Set<BukkitFurniture>> byPosition = ConcurrentChainedObject2ReferenceHashTable.createWithCapacity(256, 0.5f);
     private final ConcurrentChainedInt2ReferenceHashTable<BukkitFurniture> byInteractableEntityId = ConcurrentChainedInt2ReferenceHashTable.createWithCapacity(512, 0.5f);
     private final ConcurrentChainedInt2ReferenceHashTable<BukkitFurniture> byColliderEntityId = ConcurrentChainedInt2ReferenceHashTable.createWithCapacity(512, 0.5f);
     // Event listeners
@@ -197,6 +202,10 @@ public final class BukkitFurnitureManager extends AbstractFurnitureManager {
     @Override
     public BukkitFurniture loadedFurnitureByMetaEntityId(int entityId) {
         return this.byMetaEntityId.get(entityId);
+    }
+
+    public Set<BukkitFurniture> loadedFurnitureAtPosition(WorldVec3d position) {
+        return this.byPosition.getOrDefault(position, Set.of());
     }
 
     @Nullable
@@ -466,6 +475,22 @@ public final class BukkitFurnitureManager extends AbstractFurnitureManager {
     void registerFurniture(BukkitFurniture furniture) {
         int entityId = furniture.entityId();
         this.byMetaEntityId.put(entityId, furniture);
+        this.byPosition.compute(new WorldVec3d(furniture.position()), ($, values) -> {
+            if (values == null) {
+                return Set.of(furniture);
+            }
+
+            if (values.contains(furniture)) {
+                return values;
+            }
+
+            List<BukkitFurniture> values0 = new ArrayList<>(values.size() + 1);
+
+            values0.addAll(values);
+            values0.add(furniture);
+
+            return Set.copyOf(values0);
+        });
         this.byInteractableEntityId.put(entityId, furniture);
         for (int id : furniture.interactableEntityIds()) {
             this.byInteractableEntityId.put(id, furniture);
@@ -506,6 +531,21 @@ public final class BukkitFurnitureManager extends AbstractFurnitureManager {
         int entityId = furniture.entityId();
         // 移除entity id映射
         this.byMetaEntityId.remove(entityId);
+        this.byPosition.computeIfPresent(new WorldVec3d(furniture.position()), ($, values) -> {
+            if (!values.contains(furniture)) {
+                return values;
+            }
+
+            if (values.size() > 1) {
+                List<BukkitFurniture> values0 = new ArrayList<>(values);
+
+                values0.remove(furniture);
+
+                return Set.copyOf(values0);
+            }
+
+            return null;
+        });
         this.byInteractableEntityId.remove(entityId);
         for (int id : furniture.interactableEntityIds()) {
             this.byInteractableEntityId.remove(id);
